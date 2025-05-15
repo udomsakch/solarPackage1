@@ -99,18 +99,39 @@
       populatePackageDropdown();
     }
 
-    function populatePackageDropdown() {
-      const select = document.getElementById("packageSelect");
-      select.innerHTML = '<option value="">-- กรุณาเลือก Package --</option>';
-      for (const [type, list] of Object.entries(packages)) {
-        list.forEach(pkg => {
-          if (pkg.size >= recommendedKw) {
-            const value = `${type}|${pkg.size}`;
-            select.innerHTML += `<option value="${value}">${type} ${pkg.size} kW</option>`;
-          }
-        });
+function populatePackageDropdown() {
+  const select = document.getElementById("packageSelect");
+  select.innerHTML = '<option value="">-- กรุณาเลือก Package --</option>';
+
+  let hasMatchingPackage = false;
+
+  for (const [type, list] of Object.entries(packages)) {
+    list.forEach(pkg => {
+      if (pkg.size >= recommendedKw) {
+        hasMatchingPackage = true;
+        const value = `${type}|${pkg.size}`;
+        select.innerHTML += `<option value="${value}">${type} ${pkg.size} kW</option>`;
       }
+    });
+  }
+
+  // ถ้าไม่มีแพ็กเกจที่ >= recommendedKw ให้แสดงแพ็กเกจขนาดใหญ่สุดของแต่ละประเภทแทน
+  if (!hasMatchingPackage) {
+    for (const [type, list] of Object.entries(packages)) {
+      const maxPkg = list[list.length - 1]; // ขนาดใหญ่สุด (อยู่ท้าย array)
+      const value = `${type}|${maxPkg.size}`;
+      select.innerHTML += `<option value="${value}">${type} ${maxPkg.size} kW</option>`;
     }
+
+    // เพิ่มคำแนะนำผู้ใช้
+    document.getElementById("result").innerHTML += `
+      <div class="alert alert-warning mt-3">
+        ขนาดที่แนะนำเกินกว่าขนาดสูงสุดของแพ็กเกจที่มี กรุณาเลือกขนาดใหญ่สุดที่ใกล้เคียงที่สุด
+      </div>
+    `;
+  }
+}
+
 
     function displaySelectedPackage() {
       const selected = document.getElementById("packageSelect").value;
