@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เครื่องคำนวณระบบโซลาร์เซลล์</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    .package-card { border-radius: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body class="bg-light">
+  <div class="container py-5">
+    <h1 class="text-center mb-4">เครื่องคำนวณระบบผลิตไฟฟ้าพลังงานแสงอาทิตย์</h1>
+
+    <!-- 1. เลือกมิเตอร์ -->
+    <div class="mb-4">
+      <label class="form-label fw-bold">1. เลือกประเภทมิเตอร์:</label><br>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="meterType" id="tou" value="TOU" checked>
+        <label class="form-check-label" for="tou">TOU</label>
+      </div>
+      <div class="form-check form-check-inline">
+        <input class="form-check-input" type="radio" name="meterType" id="tod" value="TOD">
+        <label class="form-check-label" for="tod">TOD</label>
+      </div>
+    </div>
+
+    <!-- 2. สไลด์บาร์ กลางวัน/กลางคืน -->
+    <div class="mb-4">
+      <label for="dayRatio" class="form-label fw-bold">2. เลือกสัดส่วนการใช้ไฟฟ้ากลางวัน: <span id="dayRatioValue">50</span>%</label>
+      <input type="range" class="form-range" min="0" max="100" value="50" id="dayRatio">
+    </div>
+
+    <!-- 3. ป้อนค่าไฟ -->
+    <div class="mb-4">
+      <label for="monthlyCost" class="form-label fw-bold">3. ป้อนค่าไฟฟ้าต่อเดือน (บาท):</label>
+      <input type="number" id="monthlyCost" class="form-control" placeholder="เช่น 3000">
+    </div>
+
+    <!-- 4. แสดงผลลัพธ์ -->
+    <div class="mb-4">
+      <button class="btn btn-primary" onclick="calculate()">4. คำนวณ</button>
+    </div>
+
+    <div id="result" class="mb-5"></div>
+
+    <!-- 5. เลือก Package -->
+    <h4 class="fw-bold">5. เลือก Package ที่คุณต้องการ:</h4>
+    <div class="mb-3">
+      <select class="form-select" id="packageSelect" onchange="displaySelectedPackage()">
+        <option value="">-- กรุณาเลือก Package --</option>
+      </select>
+    </div>
+    <div id="selectedPackageDetail"></div>
+  </div>
+
+  <script>
+    const packages = {
+      Standard: [
+        { size: 3, price: 90000, inverter: 'Strijng', type: 'String Inverter' },
+        { size: 5, price: 120000, inverter: 'Strijng', type: 'String Inverter' },
+        { size: 10, price: 200000, inverter: 'Strijng', type: 'String Inverter' }
+      ],
+      Gold: [
+        { size: 3, price: 110000, inverter: 'Hoymiles', type: 'Micro Inverter' },
+        { size: 5, price: 135000, inverter: 'Hoymiles', type: 'Micro Inverter' },
+        { size: 10, price: 220000, inverter: 'Hoymiles', type: 'Micro Inverter' }
+      ],
+      Premium: [
+        { size: 3, price: 130000, inverter: 'APSystems', type: 'Micro Inverter' },
+        { size: 5, price: 155000, inverter: 'APSystems', type: 'Micro Inverter' },
+        { size: 10, price: 250000, inverter: 'APSystems', type: 'Micro Inverter' }
+      ]
+    };
+
+    let recommendedKw = 0;
+
+    document.getElementById("dayRatio").addEventListener("input", e => {
+      document.getElementById("dayRatioValue").textContent = e.target.value;
+    });
+
+    function calculate() {
+      const monthlyCost = parseFloat(document.getElementById("monthlyCost").value);
+      const dayRatio = parseInt(document.getElementById("dayRatio").value);
+      if (isNaN(monthlyCost) || monthlyCost <= 0) return alert("กรุณาป้อนค่าไฟให้ถูกต้อง");
+
+      const totalKwh = monthlyCost / 4.5;
+      const dayKwh = totalKwh * (dayRatio / 100);
+      recommendedKw = Math.ceil(dayKwh / (4 * 30));
+      const result = `
+        <div class="alert alert-info">
+          <p>คุณใช้ไฟฟ้า <strong>${totalKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
+          <p>ในช่วงกลางวันใช้ <strong>${dayKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
+          <p>ระบบที่แนะนำ: ขนาด <strong>${recommendedKw} kW</strong></p>
+        </div>
+      `;
+      document.getElementById("result").innerHTML = result;
+      populatePackageDropdown();
+    }
+
+    function populatePackageDropdown() {
+      const select = document.getElementById("packageSelect");
+      select.innerHTML = '<option value="">-- กรุณาเลือก Package --</option>';
+      for (const [type, list] of Object.entries(packages)) {
+        list.forEach(pkg => {
+          if (pkg.size >= recommendedKw) {
+            const value = `${type}|${pkg.size}`;
+            select.innerHTML += `<option value="${value}">${type} ${pkg.size} kW</option>`;
+          }
+        });
+      }
+    }
+
+    function displaySelectedPackage() {
+      const selected = document.getElementById("packageSelect").value;
+      const container = document.getElementById("selectedPackageDetail");
+      if (!selected) return container.innerHTML = "";
+
+      const [type, sizeStr] = selected.split("|");
+      const size = parseInt(sizeStr);
+      const pkg = packages[type].find(p => p.size === size);
+      const price = pkg.price;
+      const panelCount = size >= 10 ? 16 : size === 5 ? 8 : 5;
+      const annualSaving = size * 4 * 30 * 4.5 * 12;
+      const payback = (price / annualSaving).toFixed(1);
+
+      const advantages = {
+        Standard: 'ราคาประหยัด เหมาะสำหรับบ้านทั่วไป ระบบง่ายต่อการดูแล',
+        Gold: 'มี Micro Inverter แยกควบคุมแต่ละแผง เพิ่มประสิทธิภาพในกรณีแสงไม่สม่ำเสมอ',
+        Premium: 'ใช้ Micro Inverter คุณภาพสูง ควบคุมแต่ละแผงอิสระ ประสิทธิภาพสูงสุด เหมาะกับพื้นที่ซับซ้อน'
+      };
+
+      container.innerHTML = `
+        <div class="card package-card p-4">
+          <h5>${type} ${size} kW</h5>
+          <p><strong>จำนวนแผง:</strong> JA Solar ${panelCount} แผง</p>
+          <p><strong>ราคา:</strong> ${price.toLocaleString()} บาท</p>
+          <hr>
+          <h6 class="mt-3">🔌 รายละเอียด Inverter</h6>
+          <p><strong>ยี่ห้อ:</strong> ${pkg.inverter}</p>
+          <p><strong>ชนิด:</strong> ${pkg.type}</p>
+          <hr>
+          <p><strong>ระยะเวลาคุ้มทุนโดยประมาณ:</strong> ${payback} ปี</p>
+          <p><strong>ข้อดีของแพ็กเกจ:</strong> ${advantages[type]}</p>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>
