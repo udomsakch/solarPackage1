@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>โปรแกรมคำนวณระบบโซลาร์เซลล์</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>เครื่องคำนวณระบบโซลาร์เซลล์</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"/>
   <style>
-    .package-card { border-radius: 1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .package-card {
+      border-radius: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body class="bg-light">
@@ -15,7 +18,7 @@
 
     <!-- 1. เลือกมิเตอร์ -->
     <div class="mb-4">
-      <label class="form-label fw-bold">1. เลือกประเภทมิเตอร์:</label><br>
+      <label class="form-label fw-bold">1. เลือกประเภทมิเตอร์:</label><br/>
       <div class="form-check form-check-inline">
         <input class="form-check-input" type="radio" name="meterType" id="tou" value="TOU" checked>
         <label class="form-check-label" for="tou">TOU</label>
@@ -38,7 +41,7 @@
       <input type="number" id="monthlyCost" class="form-control" placeholder="เช่น 3000">
     </div>
 
-    <!-- 4. แสดงผลลัพธ์ -->
+    <!-- 4. คำนวณ -->
     <div class="mb-4">
       <button class="btn btn-primary" onclick="calculate()">4. คำนวณ</button>
     </div>
@@ -80,83 +83,64 @@
       document.getElementById("dayRatioValue").textContent = e.target.value;
     });
 
-  function calculate() {
-  const monthlyCost = parseFloat(document.getElementById("monthlyCost").value);
-  const dayRatio = parseInt(document.getElementById("dayRatio").value);
-  const meterType = document.querySelector('input[name="meterType"]:checked').value;
+    function getElectricRateKwh(dayRatio, meterType) {
+      const weekendDays = 8;
+      const weekdays = 30 - weekendDays;
 
-  if (isNaN(monthlyCost) || monthlyCost <= 0) return alert("กรุณาป้อนค่าไฟให้ถูกต้อง");
+      if (meterType === 'TOD') {
+        return 4.5;
+      } else {
+        const onpeakRate = 5.5;
+        const offpeakRate = 2.5;
+        const weekdayOnpeakHours = 13;
+        const weekdayOffpeakHours = 11;
 
-  let totalKwh;
+        const totalOnpeakHours = weekdays * weekdayOnpeakHours;
+        const totalOffpeakHours = weekdays * weekdayOffpeakHours + weekendDays * 24;
+        const totalHours = totalOnpeakHours + totalOffpeakHours;
 
-  if (meterType === "TOD") {
-    totalKwh = monthlyCost / 4.5; // ใช้ค่าไฟเฉลี่ย 4.5 บาทต่อหน่วย
-  } else if (meterType === "TOU") {
-    // คำนวณอัตรารวมตามเวลา Onpeak / Offpeak และวันธรรมดา / วันหยุด
-    const weekdayOnpeakHours = 13;   // 9.00 - 22.00
-    const weekdayOffpeakHours = 11;  // นอกช่วง Onpeak
-    const weekendHours = 24;
+        const onpeakRatio = totalOnpeakHours / totalHours;
+        const offpeakRatio = totalOffpeakHours / totalHours;
 
-    const weekdays = 5;
-    const weekends = 2;
-
-    const totalHours = (weekdays * 24) + (weekends * 24);
-    const totalOnpeakHours = weekdays * weekdayOnpeakHours;
-    const totalOffpeakHours = (weekdays * weekdayOffpeakHours) + (weekends * weekendHours);
-
-    const avgPricePerUnit = ((totalOnpeakHours * 5.5) + (totalOffpeakHours * 2.5)) / totalHours;
-
-    totalKwh = monthlyCost / avgPricePerUnit;
-  }
-
-  const dayKwh = totalKwh * (dayRatio / 100);
-  recommendedKw = Math.ceil(dayKwh / (4 * 30)); // สมมุติผลิตได้ 4 หน่วย/วัน/kW
-
-  const result = `
-    <div class="alert alert-info">
-      <p>คุณใช้ไฟฟ้า <strong>${totalKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
-      <p>ในช่วงกลางวันใช้ <strong>${dayKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
-      <p>ระบบที่แนะนำ: ขนาด <strong>${recommendedKw} kW</strong></p>
-    </div>
-  `;
-  document.getElementById("result").innerHTML = result;
-  populatePackageDropdown();
-}
-
-
-function populatePackageDropdown() {
-  const select = document.getElementById("packageSelect");
-  select.innerHTML = '<option value="">-- กรุณาเลือก Package --</option>';
-
-  let hasMatchingPackage = false;
-
-  for (const [type, list] of Object.entries(packages)) {
-    list.forEach(pkg => {
-      if (pkg.size >= recommendedKw) {
-        hasMatchingPackage = true;
-        const value = `${type}|${pkg.size}`;
-        select.innerHTML += `<option value="${value}">${type} ${pkg.size} kW</option>`;
+        return (onpeakRatio * onpeakRate) + (offpeakRatio * offpeakRate);
       }
-    });
-  }
-
-  // ถ้าไม่มีแพ็กเกจที่ >= recommendedKw ให้แสดงแพ็กเกจขนาดใหญ่สุดของแต่ละประเภทแทน
-  if (!hasMatchingPackage) {
-    for (const [type, list] of Object.entries(packages)) {
-      const maxPkg = list[list.length - 1]; // ขนาดใหญ่สุด (อยู่ท้าย array)
-      const value = `${type}|${maxPkg.size}`;
-      select.innerHTML += `<option value="${value}">${type} ${maxPkg.size} kW</option>`;
     }
 
-    // เพิ่มคำแนะนำผู้ใช้
-    document.getElementById("result").innerHTML += `
-      <div class="alert alert-warning mt-3">
-        ขนาดที่แนะนำเกินกว่าขนาดสูงสุดของแพ็กเกจที่มี กรุณาเลือกขนาดใหญ่สุดที่ใกล้เคียงที่สุด
-      </div>
-    `;
-  }
-}
+    function calculate() {
+      const monthlyCost = parseFloat(document.getElementById("monthlyCost").value);
+      const dayRatio = parseInt(document.getElementById("dayRatio").value);
+      const meterType = document.querySelector('input[name="meterType"]:checked').value;
 
+      if (isNaN(monthlyCost) || monthlyCost <= 0) return alert("กรุณาป้อนค่าไฟให้ถูกต้อง");
+
+      const ratePerKwh = getElectricRateKwh(dayRatio, meterType);
+      const totalKwh = monthlyCost / ratePerKwh;
+      const dayKwh = totalKwh * (dayRatio / 100);
+
+      recommendedKw = Math.ceil(dayKwh / (4 * 30));
+      const result = `
+        <div class="alert alert-info">
+          <p>คุณใช้ไฟฟ้า <strong>${totalKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
+          <p>ในช่วงกลางวันใช้ <strong>${dayKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
+          <p>ระบบที่แนะนำ: ขนาด <strong>${recommendedKw} kW</strong></p>
+        </div>
+      `;
+      document.getElementById("result").innerHTML = result;
+      populatePackageDropdown();
+    }
+
+    function populatePackageDropdown() {
+      const select = document.getElementById("packageSelect");
+      select.innerHTML = '<option value="">-- กรุณาเลือก Package --</option>';
+      for (const [type, list] of Object.entries(packages)) {
+        list.forEach(pkg => {
+          if (pkg.size >= recommendedKw || recommendedKw > 10) {
+            const value = `${type}|${pkg.size}`;
+            select.innerHTML += `<option value="${value}">${type} ${pkg.size} kW</option>`;
+          }
+        });
+      }
+    }
 
     function displaySelectedPackage() {
       const selected = document.getElementById("packageSelect").value;
@@ -168,27 +152,21 @@ function populatePackageDropdown() {
       const pkg = packages[type].find(p => p.size === size);
       const price = pkg.price;
       const panelCount = size >= 10 ? 16 : size === 5 ? 8 : 5;
-      const annualSaving = size * 4 * 30 * 4.5 * 12;
-      const payback = (price / annualSaving).toFixed(1);
 
-      const advantages = {
-        Standard: 'ราคาประหยัด เหมาะสำหรับบ้านทั่วไป ระบบง่ายต่อการดูแล',
-        Gold: 'มี Micro Inverter แยกควบคุมแต่ละแผง เพิ่มประสิทธิภาพในกรณีแสงไม่สม่ำเสมอ',
-        Premium: 'ใช้ Micro Inverter คุณภาพสูง ควบคุมแต่ละแผงอิสระ ประสิทธิภาพสูงสุด เหมาะกับพื้นที่ซับซ้อน'
-      };
+      const dayRatio = parseInt(document.getElementById("dayRatio").value);
+      const meterType = document.querySelector('input[name="meterType"]:checked').value;
+      const ratePerKwh = getElectricRateKwh(dayRatio, meterType);
+      const annualSaving = size * 4 * 30 * ratePerKwh * 12;
+      const payback = (price / annualSaving).toFixed(1);
 
       container.innerHTML = `
         <div class="card package-card p-4">
           <h5>${type} ${size} kW</h5>
-          <p><strong>จำนวนแผง:</strong> JA Solar ${panelCount} แผง</p>
-          <p><strong>ราคา:</strong> ${price.toLocaleString()} บาท</p>
-          <hr>
-          <h6 class="mt-3">🔌 รายละเอียด Inverter</h6>
-          <p><strong>ยี่ห้อ:</strong> ${pkg.inverter}</p>
-          <p><strong>ชนิด:</strong> ${pkg.type}</p>
-          <hr>
-          <p><strong>ระยะเวลาคุ้มทุนโดยประมาณ:</strong> ${payback} ปี</p>
-          <p><strong>ข้อดีของแพ็กเกจ:</strong> ${advantages[type]}</p>
+          <p>แผง JA จำนวน ${panelCount} แผง</p>
+          <p>Inverter: <strong>${pkg.inverter}</strong> (${pkg.type})</p>
+          <p>ราคา: <strong>${price.toLocaleString()} บาท</strong></p>
+          <p>ระยะเวลาคุ้มทุนโดยประมาณ: <strong>${payback} ปี</strong></p>
+          <p><strong>ข้อดี:</strong> ${type === 'Standard' ? 'ราคาประหยัด ใช้งานง่าย' : type === 'Gold' ? 'แยกควบคุมระดับแผงได้' : 'ประสิทธิภาพสูงสุด ควบคุมแต่ละแผงอิสระ'}</p>
         </div>
       `;
     }
