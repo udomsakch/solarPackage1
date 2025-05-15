@@ -80,24 +80,48 @@
       document.getElementById("dayRatioValue").textContent = e.target.value;
     });
 
-    function calculate() {
-      const monthlyCost = parseFloat(document.getElementById("monthlyCost").value);
-      const dayRatio = parseInt(document.getElementById("dayRatio").value);
-      if (isNaN(monthlyCost) || monthlyCost <= 0) return alert("กรุณาป้อนค่าไฟให้ถูกต้อง");
+  function calculate() {
+  const monthlyCost = parseFloat(document.getElementById("monthlyCost").value);
+  const dayRatio = parseInt(document.getElementById("dayRatio").value);
+  const meterType = document.querySelector('input[name="meterType"]:checked').value;
 
-      const totalKwh = monthlyCost / 4.5;
-      const dayKwh = totalKwh * (dayRatio / 100);
-      recommendedKw = Math.ceil(dayKwh / (4 * 30));
-      const result = `
-        <div class="alert alert-info">
-          <p>คุณใช้ไฟฟ้า <strong>${totalKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
-          <p>ในช่วงกลางวันใช้ <strong>${dayKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
-          <p>ระบบที่แนะนำ: ขนาด <strong>${recommendedKw} kW</strong></p>
-        </div>
-      `;
-      document.getElementById("result").innerHTML = result;
-      populatePackageDropdown();
-    }
+  if (isNaN(monthlyCost) || monthlyCost <= 0) return alert("กรุณาป้อนค่าไฟให้ถูกต้อง");
+
+  let totalKwh;
+
+  if (meterType === "TOD") {
+    totalKwh = monthlyCost / 4.5; // ใช้ค่าไฟเฉลี่ย 4.5 บาทต่อหน่วย
+  } else if (meterType === "TOU") {
+    // คำนวณอัตรารวมตามเวลา Onpeak / Offpeak และวันธรรมดา / วันหยุด
+    const weekdayOnpeakHours = 13;   // 9.00 - 22.00
+    const weekdayOffpeakHours = 11;  // นอกช่วง Onpeak
+    const weekendHours = 24;
+
+    const weekdays = 5;
+    const weekends = 2;
+
+    const totalHours = (weekdays * 24) + (weekends * 24);
+    const totalOnpeakHours = weekdays * weekdayOnpeakHours;
+    const totalOffpeakHours = (weekdays * weekdayOffpeakHours) + (weekends * weekendHours);
+
+    const avgPricePerUnit = ((totalOnpeakHours * 5.5) + (totalOffpeakHours * 2.5)) / totalHours;
+
+    totalKwh = monthlyCost / avgPricePerUnit;
+  }
+
+  const dayKwh = totalKwh * (dayRatio / 100);
+  recommendedKw = Math.ceil(dayKwh / (4 * 30)); // สมมุติผลิตได้ 4 หน่วย/วัน/kW
+
+  const result = `
+    <div class="alert alert-info">
+      <p>คุณใช้ไฟฟ้า <strong>${totalKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
+      <p>ในช่วงกลางวันใช้ <strong>${dayKwh.toFixed(1)}</strong> หน่วย/เดือน</p>
+      <p>ระบบที่แนะนำ: ขนาด <strong>${recommendedKw} kW</strong></p>
+    </div>
+  `;
+  document.getElementById("result").innerHTML = result;
+  populatePackageDropdown();
+}
 
 
 function populatePackageDropdown() {
